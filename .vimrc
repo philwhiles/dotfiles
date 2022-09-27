@@ -3,18 +3,53 @@
 "noremap <Down> <NOP>
 "noremap <Left> <NOP>
 "noremap <Right> <NOP>
+"let g:deoplete#enable_at_startup = 1
 
+
+" START FOR STARTIFY
+" returns all modified files of the current git repo
+" `2>/dev/null` makes the command fail quietly, so that when we are not
+" in a git repo, the list will be empty
+function! s:gitModified()
+    let files = systemlist('git ls-files -m 2>/dev/null')
+    return map(files, "{'line': v:val, 'path': v:val}")
+endfunction
+
+" same as above, but show untracked files, honouring .gitignore
+function! s:gitUntracked()
+    let files = systemlist('git ls-files -o --exclude-standard 2>/dev/null')
+    return map(files, "{'line': v:val, 'path': v:val}")
+endfunction
+
+" Read ~/.NERDTreeBookmarks file and takes its second column
+function! s:nerdtreeBookmarks()
+    let bookmarks = systemlist("cut -d' ' -f 2- ~/.NERDTreeBookmarks")
+    let bookmarks = bookmarks[0:-2] " Slices an empty last line
+    return map(bookmarks, "{'line': v:val, 'path': v:val}")
+endfunction
+
+let g:startify_lists = [
+        \ { 'type': 'files',     'header': ['   MRU']            },
+        \ { 'type': 'sessions',  'header': ['   Sessions']       },
+        \ { 'type': 'bookmarks', 'header': ['   Bookmarks']      },
+        \ { 'type': function('s:gitModified'),  'header': ['   git modified']},
+        \ { 'type': function('s:gitUntracked'), 'header': ['   git untracked']},
+        \ { 'type': 'commands',  'header': ['   Commands']       },
+        \ { 'type': function('s:nerdtreeBookmarks'), 'header': ['   NERDTree Bookmarks']}
+        \ ]
+let g:startify_custom_header = ''
+" END FOR STARTIFY
 
 iabbrev teh the
 
+set maxmempattern=5000
 " helps with lag when scrolling?
 set lazyredraw
-set regexpengine=1
+" fixes hanging when opeing typescript files
+set regexpengine=2
 
 " allow cursor to go beyond physical EOL in block mode (Ctrl-V)
 set virtualedit=block
-
-
 set backspace=indent,eol,start "allow backspacing over everything in insert mode
 set autoindent    " always set autoindenting on
 set copyindent    " copy the previous indentation on autoindenting
@@ -22,7 +57,7 @@ set smartindent
 set shiftwidth=2  " number of spaces to use for autoindenting
 set shiftround    " use multiple of shiftwidth when indenting with '<' and '>'
 set showmatch     " set show matching parenthesis
-set ignorecase    " ignore case when searching
+"set ignorecase    " ignore case when searching
 set smartcase     " but, ignore case if search pattern is all lowercase, case-sensitive otherwise
 set smarttab      " insert tabs on the start of a line according to, shiftwidth,not tabstop
 set title         " set terminal title
@@ -108,9 +143,16 @@ noremap <Leader>x !!bash<cr>
 
 set encoding=UTF-8
 
-let g:airline_powerline_fonts = 1
-let g:airline#extensions#tabline#enabled = 1
-let g:airline#extensions#tabline#show_buffers = 0
+  let g:airline_powerline_fonts = 1
+  let g:airline#extensions#tabline#enabled = 1
+  let g:airline#extensions#tabline#show_buffers = 0
+  let g:airline#extensions#whitespace#enabled = 0
+function! AirlineInit()
+  let g:airline_section_z = airline#section#create_right(['%l %c [%B]'])
+endfunction
+autocmd VimEnter * call AirlineInit()
+
+
 " Tab navigation like Firefox.
 nnoremap <C-S-tab> :tabprevious<CR>
 nnoremap <C-tab>   :tabnext<CR>
@@ -120,8 +162,6 @@ vnoremap <Leader>y "+y
 vnoremap <Leader>d "+d
 nnoremap <Leader>p "+p
 nnoremap <Leader>P "+P
-vnoremap <Leader>p "+p
-vnoremap <Leader>P "+P
 
 " switch buffers easily with shift left and right cursor keys
 map <S-Left> :bp<CR>
@@ -139,21 +179,24 @@ nnoremap k gk
 colorscheme philwhiles
 
 set relativenumber
-set hls
 set number
 set cursorcolumn
 "set cursorline
 "add hyphen to word boundary chars for searching etc
 set isk+=-
+set isk+=_
 
 au BufNewFile, BufRead *.py
       \ set tabstop=2 |
       \ set foldmethod=indent
 
+
 " GUI and plugin configs from here on
 if has("gui_macvim")
   execute pathogen#infect()
 
+  let g:minimap_auto_start = 1
+  let g:minimap_auto_width = 100
   set diffopt=filler,internal,algorithm:histogram,indent-heuristic
   autocmd VimEnter * call AddCycleGroup(['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'])
   " use the camelCaseMotion defaults 
@@ -173,6 +216,12 @@ if has("gui_macvim")
   autocmd FileType nerdtree setlocal nocursorcolumn
   autocmd FileType tagbar setlocal nocursorcolumn
   autocmd FileType help setlocal nocursorcolumn
+  autocmd VimEnter *
+            \   if !argc()
+            \ |   Startify
+            \ |   NERDTree
+            \ |   wincmd w
+            \ | endif
   "autocmd FileType go setlocal guifont=GoMono:h13
 
   let NERDTreeIgnore=[ '\.pyc$', '\.pyo$', '\.py\$class$', '\.obj$', '\.o$',
@@ -243,6 +292,7 @@ if has("gui_macvim")
   nmap <silent> <leader>sv :so $MYVIMRC<CR>
   " and bashrc
   nmap <silent> <leader>eb :e ~/.bashrc<CR>
+  nmap <silent> <leader>ee :e  /Users/philwhiles/Library/Application\ Support/espanso/match/base.yml<CR>
 
   " quickly off hls
   nmap <silent> <leader>/ :nohlsearch<CR>
@@ -261,11 +311,14 @@ if has("gui_macvim")
   autocmd FileType yml :DashKeywords docker kubernetes sodocker
   autocmd FileType py :DashKeywords python3 python2 sopython
 
-  set guifont=GoMonoNerdFontComplete-:h13
+  set guifont=GoMonoNerdFontCompleteM-:h12
   "set guifont=Sauce_Code_Pro_Nerd_Font_Complete_Mono:h13
 "set guifont=FuraCodeNerdFontComplete-Retina:h13
 
-  menu Utils.Buffers.Buffs <F3>
+  menu Utils.NERDTree <F2>
+  menu Utils.NERDTerm <F4>
+  menu Utils.Find <F12>
+  menu Utils.Buffers <F3>
 
   menu Utils.Code.Fix <F9>
   menu Utils.Code.Goto :YcmCompleter GoTo
@@ -280,15 +333,13 @@ if has("gui_macvim")
   menu Utils.Docs.Dash <F1>
   menu Utils.Docs.Javadoc <F16>
 
-  menu Utils.Files.Nerd <F2>
-  menu Utils.Find.Rg <F12>
 
-  menu Utils.Git.Blame :Gblame
+  menu Utils.Git.Blame :Git blame
   menu Utils.Git.Commits <F11>
   menu Utils.Git.Commit :Gcommit
   menu Utils.Git.Delete :Gdelete
   menu Utils.Git.Diff :Gvdiff
-  menu Utils.Git.Log :Glog
+  menu Utils.Git.Log :Gclog
   menu Utils.Git.Merge :Gmerge
   menu Utils.Git.Move\.\.\. :Gmove 
   menu Utils.Git.Pull :Gpull
@@ -296,8 +347,6 @@ if has("gui_macvim")
   menu Utils.Git.Rename\.\.\. :Grename 
   menu Utils.Git.Status :G
 
-  menu Utils.Vim.Limelight :Limelight!!
-  menu Utils.Vim.Goyo :Goyo
   menu Utils.Vim.Hist <F5>
   menu Utils.Vim.HLS <F13>
   menu Utils.Vim.Marks <F6>
@@ -355,19 +404,17 @@ if has("gui_macvim")
 
   map <F3> :Buffers<CR>
 
-  map <F4> :TagbarToggle<CR>
+  map <F4> :NERDTermToggle<CR>
 
   map <F5> :History<CR>
 
   map <F6> :Marks<CR>
 
-  map <F7> :YcmCompleter GoToDeclaration<CR>
 
-  map <F8> :UndotreeToggle<CR>
 
-  map <F9> :YcmCompleter FixIt<CR>
+  map <F9> :'x,.d<CR>
 
-  map <F10> :YcmCompleter OrganizeImports<CR>
+  map <F10> :UndotreeToggle<CR>
 
   map <F11> :BCommits<CR>
 
@@ -376,7 +423,6 @@ if has("gui_macvim")
 
   map <F13> :set hls!<CR>
 
-  map <F16> :YcmCompleter GetDoc<CR>
 
   "map <S-F2> :ScreenShell<CR>
   "map <F5> :BuffergatorOpen<CR>
@@ -389,7 +435,7 @@ if has("gui_macvim")
   "map <C-F7> :tabn
 
   set statusline+=%#warningmsg#
-  set statusline+=%{SyntasticStatuslineFlag()}
+ " set statusline+=%{SyntasticStatuslineFlag()}
   set statusline+=%*
   set statusline+=%{FugitiveStatusline()}
 

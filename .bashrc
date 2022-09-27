@@ -1,14 +1,17 @@
-export EDITOR=vim
-export GIT_EDITOR=vim
+eval "$(/opt/homebrew/bin/brew shellenv)"
+
+export EDITOR=mvim
+export GIT_EDITOR=mvim
 set -o vi
 set -o notify
 #export PAGER=/usr/local/bin/vimpager
 #alias less=$PAGER
 #alias more=$PAGER
 
+
 # trim the shell persistent history to 50k lines every time bash is launched
 #tail -50000 ~/.persistent_history | tee ~/.persistent_history > /dev/null
-source ~/dev/thirdparty/pureline/pureline ~/.pureline.conf
+source ~/Development/thirdparty/pureline/pureline ~/.pureline.conf
 
 log_bash_persistent_history()
 {
@@ -21,6 +24,7 @@ log_bash_persistent_history()
     echo "$command_part" >> ~/.persistent_history
     export PERSISTENT_HISTORY_LAST="$command_part"
   fi
+  
 }
 function _update_ps1() {
     log_bash_persistent_history
@@ -45,14 +49,13 @@ man() {
 export LSCOLORS="GxfxcxdxbxegedabagGxGx"
 export FZF_PREVIEW_COMMAND="bat -p --color always"
 
-export ONS=/Users/philwhiles/development/workspaces/eclipse/phoenix
 
-export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+export PATH=$PATH:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
 
-export GO_HOME=/usr/local/go
-export PATH=$PATH:$GO_HOME/bin
-export PATH=$PATH:$(go env GOPATH)/bin
-export GOPATH=$(go env GOPATH)
+#export GO_HOME=/usr/local/go
+#export PATH=$PATH:$GO_HOME/bin
+#export PATH=$PATH:$(go env GOPATH)/bin
+#export GOPATH=$(go env GOPATH)
 
 #export UNITY=/Users/philwhiles/development/workspaces/eclipse/unity
 
@@ -102,7 +105,9 @@ export PATH=$PATH:$ANT_HOME/bin
 #export ECLIPSE_HOME=~/apps/eclipse/eclipse-luna
 #export PATH=$PATH:$ECLIPSE_HOME/bin
 export PATH=$PATH:~/bin
-
+if command -v pyenv 1>/dev/null 2>&1; then
+  eval "$(pyenv init -)"
+fi
 # extended globbing
 shopt -s extglob
 # Use case-insensitive filename globbing
@@ -123,12 +128,14 @@ shopt -s histappend
 # for example, cd /vr/lgo/apaache would find /var/log/apache
 shopt -s cdspell
 
+
 alias jh='dayone2 new "$@" --journal Home 2>/dev/null 1>/dev/null'
 alias jw='dayone2 new "$@" --journal Work 2>/dev/null 1>/dev/null'
 alias jd='dayone2 new "$@" --journal DevOps 2>/dev/null 1>/dev/null'
 alias jj='dayone2 new "$@" --journal Java 2>/dev/null 1>/dev/null'
 alias jb='dayone2 new "$@" --journal Bash 2>/dev/null 1>/dev/null'
 alias jt='dayone2 new "$@" --journal Todo 2>/dev/null 1>/dev/null'
+alias jf='dayone2 new "$@" --journal Finance 2>/dev/null 1>/dev/null'
 
 alias gbi='gcloud beta interactive'
 # If this shell is interactive, turn on programmable completion enhancements.
@@ -255,7 +262,7 @@ grr ()
 #  fi
 #}
 
-alias vi=mvim
+alias vi='mvim'
 
 ## trash - move a file to macOS trash can
 trash () {
@@ -295,7 +302,11 @@ function cl() {
 #setjdk 1.8.0_191
 #setjdk 9
 #setjdk 10
-setjdk 11
+setjdk 16
+alias f='frettler'
+source <(~/bin/frettler completion)
+complete -F _frettler_completions f
+setjdk 16
 
 #alias j11="export JAVA_HOME=`/usr/libexec/java_home -v 11`; java -version"
 #alias j10="export JAVA_HOME=`/usr/libexec/java_home -v 10`; java -version"
@@ -316,10 +327,13 @@ if [ -f '/Users/philwhiles/Development/thirdparty/gcloud-sdk/path.bash.inc' ]; t
 # enable shell command completion for gcloud.
 if [ -f '/Users/philwhiles/Development/thirdparty/gcloud-sdk/completion.bash.inc' ]; then . '/Users/philwhiles/Development/thirdparty/gcloud-sdk/completion.bash.inc'; fi
 
+source <(~/bin/gcp completion)
 # enable shell command completion for kubectl.
 source <(kubectl completion bash)
 alias k='kubectl'
 complete -F __start_kubectl k
+
+complete -C '/usr/local/bin/aws_completer' aws
 
 # credit to: https://github.com/cloudfoundry/homebrew-tap/blob/master/cf-cli.rb
 _fly_compl() {
@@ -336,7 +350,8 @@ _fly_compl() {
 complete -F _fly_compl fly
 
 # enable shell command completion for brew installed cmds
-[[ -r "/usr/local/etc/profile.d/bash_completion.sh" ]] && . "/usr/local/etc/profile.d/bash_completion.sh"
+export BASH_COMPLETION_COMPAT_DIR="/usr/local/etc/bash_completion.d"
+[[ -r "/opt/homebrew/etc/profile.d/bash_completion.sh" ]] && . "/opt/homebrew/etc/profile.d/bash_completion.sh"
 if type brew &>/dev/null; then
   for COMPLETION in $(brew --prefix)/etc/bash_completion.d/*
   do
@@ -347,6 +362,9 @@ if type brew &>/dev/null; then
     source "$(brew --prefix)/etc/profile.d/bash_completion.sh"
   fi
 fi
+
+# For some reason my brew bash completions and git do not mesh so I had to resort to the following
+source ~/.git-completion.bash
 
 # FZF needs to come after the completions shananighans above
 [ -f ~/.fzf.bash ] && source ~/.fzf.bash
@@ -361,13 +379,13 @@ fgv() {
   fi
 }
 
-## fvi - fzf then vim
-fvi() {
+## viz - fzf then vim
+viz() {
   mvim $(fzf)
 }
 
-## fd - cd to selected directory 
-fcd() {
+## cdz - cd to selected directory 
+cdz() {
   local dir
   dir=$(find ${1:-.} -path '*/\.*' -prune \
                   -o -type d -print 2> /dev/null | fzf +m) &&
@@ -448,13 +466,14 @@ fcoc() {
   git checkout $(echo "$commit" | sed "s/ .*//")
 }
 
-## fshow - git commit browser
-fshow() {
+## gitlog - git commit browser
+gitlog() {
   is_in_git_repo || return
 
   git log --graph --color=always \
       --format="%C(auto)%h%d %s %C(black)%C(bold)%cr" "$@" |
   fzf --ansi --no-sort --reverse --tiebreak=index --bind=ctrl-s:toggle-sort \
+--preview="$_viewGitLogLine" \
       --bind "ctrl-m:execute:
                 (grep -o '[a-f0-9]\{7\}' | head -1 |
                 xargs -I % sh -c 'git show --color=always % | less -R') << 'FZF-EOF'
@@ -465,8 +484,8 @@ alias glNoGraph='git log --color=always --format="%C(auto)%h%d %s %C(black)%C(bo
 _gitLogLineToHash="echo {} | grep -o '[a-f0-9]\{7\}' | head -1"
 _viewGitLogLine="$_gitLogLineToHash | xargs -I % sh -c 'git show --color=always % | diff-so-fancy'"
 
-## fcoc_preview - checkout git commit with previews
-fcoc_preview() {
+## gitlogview - checkout git commit with previews
+gitlogview() {
   is_in_git_repo || return
 
   local commit
@@ -586,9 +605,11 @@ peek() {
   fzf --preview="bat -p --color always -H {2} --style=header,grid {}"
 }
 
-## hunt [file]- ripgrep fuzzy with preview
-hunt() {
-  rg --vimgrep $1 | fzf --delimiter=':' --nth=1 --preview='bat -p --color always -H {2} --style=header,grid {1}'
+## grepz [text]- ripgrep fuzzy with preview
+grepz() {
+  rg --vimgrep $1 | fzf --delimiter=':' \
+    --bind "ctrl-v:execute:vi {}" \
+    --nth=1 --preview='bat -p --color always -H {2} --line-range={2}: --style=header,grid {1}'
 }
 
 alias tree='tree -C'
@@ -599,3 +620,8 @@ bind '"\e[A":history-search-backward'
 bind '"\e[B":history-search-forward'
 
 export PATH="$HOME/.yarn/bin:$HOME/.config/yarn/global/node_modules/.bin:$PATH"
+export MANPAGER="sh -c 'col -bx | bat -l man -p'"
+
+
+
+#source /opt/intel/openvino/bin/setupvars.sh > /dev/null
